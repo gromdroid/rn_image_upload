@@ -56,8 +56,6 @@ export default class App extends Component {
             firstLoading: true,
             dataSource: null,
             imageSource: null,
-            imageSourceUri: null,
-            data: null,
             progress: 0,
             fileName: '',
             fileExtension: null,
@@ -69,8 +67,9 @@ export default class App extends Component {
 
     //Here we get the list with images because componentDidMount is always called before the view is rendered
     componentDidMount() {
-      //Hide yellow warnings in the App
-      console.disableYellowBox = true;
+        //Hide yellow warnings in the App
+        console.disableYellowBox = true;
+
         return fetch('http://gromdroid.nl/wp/wp-json/wp/v2/media')
             .then((response) => response.json())
             .then((responseJson) => {
@@ -81,8 +80,6 @@ export default class App extends Component {
                     firstLoading: false,
                     dataSource: ds.cloneWithRows(responseJson),
                     uploading: false,
-                }, function() {
-                    // In this block you can do something with new state.
                 });
             })
             .catch((error) => {
@@ -126,8 +123,6 @@ export default class App extends Component {
           console.log('User cancelled photo picker');
       } else if (response.error) {
           console.log('ImagePicker Error: ', response.error);
-      } else if (response.customButton) {
-          console.log('User tapped custom button: ', response.customButton);
       } else {
           let source = {
               uri: response.uri
@@ -138,18 +133,13 @@ export default class App extends Component {
           let mimeType = mime.lookup(filePath);
           let fileExtension = mime.extension(mimeType);
 
-          alert(fileExtension);
-
           this.setState({
               fileExtension: fileExtension,
               filePath: filePath,
               filePathRaw: filePathRaw,
               mimeType: mimeType,
               imageSource: response.uri,
-              imageSourceUri: source,
-              data: response.data
           });
-          //this.uploadPhoto();
       }
 
     }
@@ -162,9 +152,9 @@ export default class App extends Component {
         let mimeType = this.state.mimeType;
         let fileExtension = this.state.fileExtension;
 
-        //Set all to null because after upload there is no 'main' image/video anymore
+        //Set all to null because after upload there is no 'main' image/video for uploading anymore
         this.setState({
-            fileName: null,
+            fileName: '',
             fileExtension: null,
             mimeType: null,
             imageSource: null,
@@ -187,7 +177,6 @@ export default class App extends Component {
             .then((res) => {
                 this.increaseProgressBar(100);
                 this.componentDidMount();
-                alert(mimeType + fileName + fileExtension + res.text());
                 //console.log(res.text())
             })
             .catch((err) => {
@@ -218,8 +207,9 @@ export default class App extends Component {
     }
 
     render() {
-      const barWidth = Dimensions.get('screen').width - 40;
+      const progressBarWidth = Dimensions.get('screen').width - 40;
 
+      //Show loading screen when loading images
       if (this.state.firstLoading) {
           return (
              <ThemeContext.Provider value={getTheme(uiTheme)}>
@@ -234,10 +224,12 @@ export default class App extends Component {
                }}
              />
              <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-               <ActivityIndicator />
+                <ActivityIndicator />
              </View>
             </ThemeContext.Provider>
           );
+
+      //Show image upload detail screen
       } else if(this.state.imageSource != null){
         let fileName = this.state.fileName;
 
@@ -254,33 +246,36 @@ export default class App extends Component {
              }}
            />
            <View>
+              //Check mimeType if you need to display image or video
               {this.state.mimeType== 'image/jpeg' &&
               <Image source={{uri:  this.state.filePath}} style={styles.imageViewContainer} />
               }
               {this.state.mimeType == 'video/mp4' &&
               <Video url={this.state.filePath} />
               }
-              <View style={styles.textFieldTitle}>
+              <View style={styles.textFieldPadding}>
                 <TextField
                     label='File name'
                     value={fileName}
                     onChangeText={ (fileName) => this.setState({ fileName }) }
                 />
               </View>
-              <View style={styles.textFieldTitle}>
+              <View style={styles.textFieldPadding}>
               <Button raised primary text="Uploaden" onPress={() => this.uploadPhoto()} />
               <Button raised accent text="Cancel" onPress={() => this.setState({
-                    imageSource: null,
-                    imageSourceUri: null,
-                    data: null,
-                    progress: 0,
-                    fileName: ''})} />
+                  //Set everything to null again because after cancel there is no 'main' image/video
+                  fileName: '',
+                  fileExtension: null,
+                  mimeType: null,
+                  imageSource: null,
+                  uploading: true,})} />
               </View>
            </View>
           </ThemeContext.Provider>
         );
       }
 
+      //Else just render the main screen
       return (
           <ThemeContext.Provider value={getTheme(uiTheme)}>
           <Toolbar
@@ -295,6 +290,7 @@ export default class App extends Component {
               }
             }}
           />
+          //If there is an upload going on show progressbar
           {this.state.uploading &&
           <View style={styles.uploadView}>
           <ProgressBarAnimated
@@ -311,8 +307,9 @@ export default class App extends Component {
              renderRow={(rowData) =>
                 <View style={styles.itemView}>
                   <Card>
-                    <Text style={styles.textViewTitle} >{rowData.title.rendered}</Text>
+                    <Text style={styles.textViewTitle} >{rowData.title.rendered.replace('-', ' ')}</Text>
                     <Text style={styles.textViewDate} >{this.calculateDateString(rowData.date)}</Text>
+                    //Check mimeType to display image or video
                     {rowData.mime_type == 'image/jpeg' &&
                     <Image source = {{ uri: rowData.media_details.sizes.large.source_url }} style={styles.imageViewContainer} />
                     }
@@ -414,7 +411,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
     },
 
-    textFieldTitle: {
+    textFieldPadding: {
         margin: 10,
     }
 
