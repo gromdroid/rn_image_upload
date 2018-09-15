@@ -138,6 +138,9 @@ android {
 }
 
 dependencies {
+    compile project(':react-native-keep-awake')
+    compile project(':react-native-orientation')
+    compile project(':react-native-linear-gradient')
     compile project(':react-native-vector-icons')
     compile project(':rn-fetch-blob')
     compile project(':react-native-video')

@@ -19,12 +19,13 @@ import {
 } from 'react-native';
 
 import ImagePicker from 'react-native-image-picker';
-import Video from 'react-native-video';
 import RNFetchBlob from 'rn-fetch-blob'
 import ProgressBarAnimated from 'react-native-progress-bar-animated';
-import TextField from 'react-native-material-textfield';
+import {TextField} from 'react-native-material-textfield';
 import Icon from 'react-native-vector-icons/Ionicons';
 import ActionButton from 'react-native-action-button';
+import * as mime from 'react-native-mime-types';
+import Video from 'react-native-af-video-player'
 
 import {
     COLOR,
@@ -58,6 +59,10 @@ export default class App extends Component {
             data: null,
             progress: 0,
             fileName: '',
+            fileExtension: null,
+            mimeType: null,
+            filePath: null,
+            filePathRaw: null,
         };
     }
 
@@ -96,7 +101,7 @@ export default class App extends Component {
             quality: 1.0,
             mediaType: type,
             storageOptions: {
-                skipBackup: true
+                skipBackup: false
             }
         };
 
@@ -125,7 +130,18 @@ export default class App extends Component {
               uri: response.uri
           };
 
+          let filePathRaw = response.path;
+          let filePath = 'file://' + response.path;
+          let mimeType = mime.lookup(filePath);
+          let fileExtension = mime.extension(mimeType);
+
+          alert(fileExtension);
+
           this.setState({
+              fileExtension: fileExtension,
+              filePath: filePath,
+              filePathRaw: filePathRaw,
+              mimeType: mimeType,
               imageSource: response.uri,
               imageSourceUri: source,
               data: response.data
@@ -138,21 +154,29 @@ export default class App extends Component {
 
     //Method to upload chosen picture to WordPress hosting
     uploadPhoto() {
-        var milliseconds = (new Date).getTime();
+        let fileName = this.state.fileName;
+        let imageSource = this.state.imageSource;
+        let mimeType = this.state.mimeType;
+        let fileExtension = this.state.fileExtension;
+
+        //Set all to null because after upload there is no 'main' image/video anymore
         this.setState({
             fileName: null,
+            fileExtension: null,
+            mimeType: null,
             imageSource: null,
             uploading: true,
         });
+
         RNFetchBlob.fetch('POST', 'http://gromdroid.nl/wp/wp-json/wp/v2/media', {
                 //// TODO: Real authorization instead of hardcoded base64 username:password
                 'Authorization': "Basic YWRtaW46YnNsaW1faGFuemUh",
-                'Content-Type': 'image/jpeg',
-                'Content-Disposition': 'attachment; filename=' + this.state.fileName + '.jpg',
+                'Content-Type': + mimeType,
+                'Content-Disposition': 'attachment; filename=' + fileName + '.' + fileExtension,
                 // here's the body you're going to send, should be a BASE64 encoded string
                 // (you can use "base64"(refer to the library 'mathiasbynens/base64') APIs to make one).
                 // The data will be converted to "byte array"(say, blob) before request sent.
-            }, RNFetchBlob.wrap(this.state.imageSource))
+            }, RNFetchBlob.wrap(imageSource))
             .uploadProgress({ interval : 250 }, (written, total) => {
                 console.log('uploaded', written / total);
                 this.increaseProgressBar((written/total) * 100);
@@ -160,6 +184,7 @@ export default class App extends Component {
             .then((res) => {
                 this.increaseProgressBar(100);
                 this.componentDidMount();
+                alert(mimeType + fileName + fileExtension + res.text());
                 //console.log(res.text())
             })
             .catch((err) => {
@@ -212,6 +237,7 @@ export default class App extends Component {
           );
       } else if(this.state.imageSource != null){
         let fileName = this.state.fileName;
+
         return (
            <ThemeContext.Provider value={getTheme(uiTheme)}>
            <Toolbar
@@ -225,7 +251,12 @@ export default class App extends Component {
              }}
            />
            <View>
-              <Image source={{uri: this.state.imageSource.toString().replace("content://com.bslim_upload.provider/external_files/", "file:///storage/emulated/0/")}} style={styles.imageViewContainer} />
+              {this.state.mimeType== 'image/jpeg' &&
+              <Image source={{uri:  this.state.filePath}} style={styles.imageViewContainer} />
+              }
+              {this.state.mimeType == 'video/mp4' &&
+              <Video url={this.state.filePath} />
+              }
               <View style={styles.textFieldTitle}>
                 <TextField
                     label='File name'
@@ -234,7 +265,13 @@ export default class App extends Component {
                 />
               </View>
               <View style={styles.textFieldTitle}>
-                <Button raised primary text="Uploaden" onPress={() => this.uploadPhoto()} />
+              <Button raised primary text="Uploaden" onPress={() => this.uploadPhoto()} />
+              <Button raised accent text="Cancel" onPress={() => this.setState({
+                    imageSource: null,
+                    imageSourceUri: null,
+                    data: null,
+                    progress: 0,
+                    fileName: ''})} />
               </View>
            </View>
           </ThemeContext.Provider>
@@ -273,7 +310,12 @@ export default class App extends Component {
                   <Card>
                     <Text style={styles.textViewTitle} >{rowData.title.rendered}</Text>
                     <Text style={styles.textViewDate} >{this.calculateDateString(rowData.date)}</Text>
-                    <Image source = {{ uri: rowData.media_details.sizes.medium_large.source_url }} style={styles.imageViewContainer} />
+                    {rowData.mime_type == 'image/jpeg' &&
+                    <Image source = {{ uri: rowData.guid.rendered }} style={styles.imageViewContainer} />
+                    }
+                    {rowData.mime_type == 'video/mp4' &&
+                    <Video url={rowData.guid.rendered} />
+                    }
                   </Card>
                 </View>
               }
@@ -322,6 +364,14 @@ const styles = StyleSheet.create({
         fontSize: 20,
         height: 22,
         color: 'white',
+    },
+
+    backgroundVideo: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        bottom: 0,
+        right: 0,
     },
 
     uploadView: {
