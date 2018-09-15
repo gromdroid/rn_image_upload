@@ -9,6 +9,7 @@
   "dependencies": {
     "react": "16.5.0",
     "react-native": "0.57.0",
+    "react-native-action-button": "^2.8.5",
     "react-native-camera": "^1.2.0",
     "react-native-image-crop-picker": "^0.21.1",
     "react-native-image-picker": "^0.26.10",

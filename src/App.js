@@ -22,7 +22,9 @@ import ImagePicker from 'react-native-image-picker';
 import Video from 'react-native-video';
 import RNFetchBlob from 'rn-fetch-blob'
 import ProgressBarAnimated from 'react-native-progress-bar-animated';
-import { TextField } from 'react-native-material-textfield';
+import TextField from 'react-native-material-textfield';
+import Icon from 'react-native-vector-icons/Ionicons';
+import ActionButton from 'react-native-action-button';
 
 import {
     COLOR,
@@ -30,7 +32,6 @@ import {
     getTheme,
     Toolbar,
     Card,
-    ActionButton,
     Button,
 } from 'react-native-material-ui';
 
@@ -88,38 +89,50 @@ export default class App extends Component {
     }
 
     //Method for taking a picture or picking a picture from cameraroll
-    chooseImage() {
+    chooseContent(action, type) {
         const options = {
             height: 500,
             width: 500,
             quality: 1.0,
+            mediaType: type,
             storageOptions: {
                 skipBackup: true
             }
         };
 
-        ImagePicker.showImagePicker(options, (response) => {
-            console.log('Response = ', response);
+        if(action == 'new'){
+          ImagePicker.launchCamera(options, (response) => {
+            this.handleChosenContent(response);
+          });
+        } else if(action == 'existing'){
+          ImagePicker.launchImageLibrary(options, (response) => {
+            this.handleChosenContent(response);
+          });
+        }
+    }
 
-            if (response.didCancel) {
-                console.log('User cancelled photo picker');
-            } else if (response.error) {
-                console.log('ImagePicker Error: ', response.error);
-            } else if (response.customButton) {
-                console.log('User tapped custom button: ', response.customButton);
-            } else {
-                let source = {
-                    uri: response.uri
-                };
+    handleChosenContent(response){
+      console.log('Response = ', response);
 
-                this.setState({
-                    imageSource: response.uri,
-                    imageSourceUri: source,
-                    data: response.data
-                });
-                //this.uploadPhoto();
-            }
-        });
+      if (response.didCancel) {
+          console.log('User cancelled photo picker');
+      } else if (response.error) {
+          console.log('ImagePicker Error: ', response.error);
+      } else if (response.customButton) {
+          console.log('User tapped custom button: ', response.customButton);
+      } else {
+          let source = {
+              uri: response.uri
+          };
+
+          this.setState({
+              imageSource: response.uri,
+              imageSourceUri: source,
+              data: response.data
+          });
+          //this.uploadPhoto();
+      }
+
     }
 
 
@@ -266,8 +279,20 @@ export default class App extends Component {
               }
             />
           </View>
-          <ActionButton />
-          <ActionButton icon="add" onPress={() => this.chooseImage()}/>
+          <ActionButton buttonColor="rgba(231,76,60,1)">
+          <ActionButton.Item buttonColor='#9c27b0' title="Take picture" onPress={() => this.chooseContent('new', 'image')}>
+            <Icon name="md-camera" style={styles.actionButtonIcon} />
+          </ActionButton.Item>
+          <ActionButton.Item buttonColor='#3f51b5' title="Choose photo" onPress={() => this.chooseContent('existing', 'image')}>
+            <Icon name="md-image" style={styles.actionButtonIcon} />
+          </ActionButton.Item>
+          <ActionButton.Item buttonColor='#009688' title="Take video" onPress={() => this.chooseContent('new', 'video')}>
+            <Icon name="md-videocam" style={styles.actionButtonIcon} />
+          </ActionButton.Item>
+          <ActionButton.Item buttonColor='#00bcd4' title="Choose video" onPress={() => this.chooseContent('existing', 'video')}>
+            <Icon name="md-document" style={styles.actionButtonIcon} />
+          </ActionButton.Item>
+        </ActionButton>
           </ThemeContext.Provider>
       );
     }
@@ -291,6 +316,12 @@ const styles = StyleSheet.create({
         },
         shadowRadius: 5,
         shadowOpacity: 1.0
+    },
+
+    actionButtonIcon: {
+        fontSize: 20,
+        height: 22,
+        color: 'white',
     },
 
     uploadView: {
