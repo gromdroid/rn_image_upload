@@ -21,6 +21,8 @@ import {
 import ImagePicker from 'react-native-image-picker';
 import Video from 'react-native-video';
 import RNFetchBlob from 'rn-fetch-blob'
+import ProgressBarAnimated from 'react-native-progress-bar-animated';
+
 import {
     COLOR,
     ThemeContext,
@@ -47,6 +49,11 @@ export default class App extends Component {
         super();
         this.state = {
             firstLoading: true,
+            dataSource: null,
+            imageSource: null,
+            imageSourceUri: null,
+            data: null,
+            progress: 0,
         };
     }
 
@@ -61,6 +68,7 @@ export default class App extends Component {
                 this.setState({
                     firstLoading: false,
                     dataSource: ds.cloneWithRows(responseJson),
+                    imageSource: null,
                 }, function() {
                     // In this block you can do something with new state.
                 });
@@ -68,6 +76,12 @@ export default class App extends Component {
             .catch((error) => {
                 console.error(error);
             });
+    }
+
+    increaseProgressBar = (value) => {
+      this.setState({
+        progress: value,
+      });
     }
 
     //Method for taking a picture or picking a picture from cameraroll
@@ -97,9 +111,9 @@ export default class App extends Component {
 
                 this.setState({
                     imageSource: response.uri,
+                    imageSourceUri: source,
                     data: response.data
                 });
-
                 this.uploadPhoto();
             }
         });
@@ -118,7 +132,12 @@ export default class App extends Component {
                 // (you can use "base64"(refer to the library 'mathiasbynens/base64') APIs to make one).
                 // The data will be converted to "byte array"(say, blob) before request sent.
             }, RNFetchBlob.wrap(this.state.imageSource))
+            .uploadProgress({ interval : 250 }, (written, total) => {
+                console.log('uploaded', written / total);
+                this.increaseProgressBar((written/total) * 100);
+            })
             .then((res) => {
+                this.increaseProgressBar(100);
                 this.componentDidMount();
                 //console.log(res.text())
             })
@@ -128,6 +147,8 @@ export default class App extends Component {
     }
 
     render() {
+      const barWidth = Dimensions.get('screen').width - 30;
+
       if (this.state.firstLoading) {
           return (
              <ThemeContext.Provider value={getTheme(uiTheme)}>
@@ -162,6 +183,16 @@ export default class App extends Component {
               }
             }}
           />
+          {this.state.imageSource &&
+          <View style={styles.uploadView}>
+          <ProgressBarAnimated
+            height={5}
+            width={barWidth}
+            maxValue={100}
+            value={this.state.progress}
+          />
+          </View>
+          }
           <View style={styles.MainContainer}>
             <ListView
              dataSource={this.state.dataSource}
@@ -182,13 +213,13 @@ export default class App extends Component {
       );
     }
 }
+const progressBarWidth = Dimensions.get('screen').width - 20;
 const styles = StyleSheet.create({
 
     MainContainer: {
 
         // Add padding at the top for iOS
         paddingTop: (Platform.OS === 'ios') ? 20 : 0,
-        backgroundColor: '#FFFFFF'
     },
 
     toolbar: {
@@ -202,6 +233,17 @@ const styles = StyleSheet.create({
         },
         shadowRadius: 5,
         shadowOpacity: 1.0
+    },
+
+    uploadView: {
+        margin: 15,
+        marginBottom: 0,
+        height: 5,
+    },
+
+    uploadImage: {
+        height: '100%',
+        aspectRatio: 1
     },
 
     itemView: {
