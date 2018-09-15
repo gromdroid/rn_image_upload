@@ -22,6 +22,7 @@ import ImagePicker from 'react-native-image-picker';
 import Video from 'react-native-video';
 import RNFetchBlob from 'rn-fetch-blob'
 import ProgressBarAnimated from 'react-native-progress-bar-animated';
+import { TextField } from 'react-native-material-textfield';
 
 import {
     COLOR,
@@ -29,7 +30,8 @@ import {
     getTheme,
     Toolbar,
     Card,
-    ActionButton
+    ActionButton,
+    Button,
 } from 'react-native-material-ui';
 
 const uiTheme = {
@@ -54,6 +56,7 @@ export default class App extends Component {
             imageSourceUri: null,
             data: null,
             progress: 0,
+            fileName: '',
         };
     }
 
@@ -68,7 +71,7 @@ export default class App extends Component {
                 this.setState({
                     firstLoading: false,
                     dataSource: ds.cloneWithRows(responseJson),
-                    imageSource: null,
+                    uploading: false,
                 }, function() {
                     // In this block you can do something with new state.
                 });
@@ -114,7 +117,7 @@ export default class App extends Component {
                     imageSourceUri: source,
                     data: response.data
                 });
-                this.uploadPhoto();
+                //this.uploadPhoto();
             }
         });
     }
@@ -123,11 +126,16 @@ export default class App extends Component {
     //Method to upload chosen picture to WordPress hosting
     uploadPhoto() {
         var milliseconds = (new Date).getTime();
+        this.setState({
+            fileName: null,
+            imageSource: null,
+            uploading: true,
+        });
         RNFetchBlob.fetch('POST', 'http://gromdroid.nl/wp/wp-json/wp/v2/media', {
                 //// TODO: Real authorization instead of hardcoded base64 username:password
                 'Authorization': "Basic YWRtaW46YnNsaW1faGFuemUh",
                 'Content-Type': 'image/jpeg',
-                'Content-Disposition': 'attachment; filename=Image ' + milliseconds + '.jpg',
+                'Content-Disposition': 'attachment; filename=' + this.state.fileName + '.jpg',
                 // here's the body you're going to send, should be a BASE64 encoded string
                 // (you can use "base64"(refer to the library 'mathiasbynens/base64') APIs to make one).
                 // The data will be converted to "byte array"(say, blob) before request sent.
@@ -146,8 +154,30 @@ export default class App extends Component {
             })
     }
 
+    calculateDateString(rawDate){
+      //Time in seconds
+      let currentDate = (new Date().getTime() / 1000);
+      let postedDate = (new Date(rawDate).getTime() / 1000) + 7200 //Add 2 hours bcuz fuck WordPress
+
+      let difference = Math.abs(currentDate - postedDate);
+
+      if(difference < 3600){
+        //Minute
+        return 'Posted ' + Math.ceil(difference / 60) + ' minutes ago';
+      } else if(difference < 86400){
+        //Hours
+        return 'Posted ' + Math.ceil(difference / 3600) + ' hours ago';
+      } else if(difference < 604800){
+        //Days
+        return 'Posted ' + Math.ceil(difference / 86400) + ' days ago';
+      } else {
+        //Weeks
+        return 'Posted ' + Math.ceil(difference / 604800) + ' weeks ago';
+      }
+    }
+
     render() {
-      const barWidth = Dimensions.get('screen').width - 30;
+      const barWidth = Dimensions.get('screen').width - 40;
 
       if (this.state.firstLoading) {
           return (
@@ -167,8 +197,37 @@ export default class App extends Component {
              </View>
             </ThemeContext.Provider>
           );
+      } else if(this.state.imageSource != null){
+        let fileName = this.state.fileName;
+        return (
+           <ThemeContext.Provider value={getTheme(uiTheme)}>
+           <Toolbar
+             leftElement="menu"
+             centerElement="Upload"
+             rightElement={{
+               menu: {
+                   icon: "more-vert",
+                   labels: ["item 1", "item 2"]
+               }
+             }}
+           />
+           <View>
+              <Image source={{uri: this.state.imageSource.toString().replace("content://com.bslim_upload.provider/external_files/", "file:///storage/emulated/0/")}} style={styles.imageViewContainer} />
+              <View style={styles.textFieldTitle}>
+                <TextField
+                    label='File name'
+                    value={fileName}
+                    onChangeText={ (fileName) => this.setState({ fileName }) }
+                />
+              </View>
+              <View style={styles.textFieldTitle}>
+                <Button raised primary text="Uploaden" onPress={() => this.uploadPhoto()} />
+              </View>
+           </View>
+          </ThemeContext.Provider>
+        );
       }
-
+      //// TODO: Better difference in date because now it has to add 2 hours manual because WordPress fucks up dates
       return (
           <ThemeContext.Provider value={getTheme(uiTheme)}>
           <Toolbar
@@ -183,7 +242,7 @@ export default class App extends Component {
               }
             }}
           />
-          {this.state.imageSource &&
+          {this.state.uploading &&
           <View style={styles.uploadView}>
           <ProgressBarAnimated
             height={5}
@@ -200,7 +259,7 @@ export default class App extends Component {
                 <View style={styles.itemView}>
                   <Card>
                     <Text style={styles.textViewTitle} >{rowData.title.rendered}</Text>
-                    <Text style={styles.textViewDate} >{rowData.date}</Text>
+                    <Text style={styles.textViewDate} >{this.calculateDateString(rowData.date)}</Text>
                     <Image source = {{ uri: rowData.guid.rendered }} style={styles.imageViewContainer} />
                   </Card>
                 </View>
@@ -217,7 +276,6 @@ const progressBarWidth = Dimensions.get('screen').width - 20;
 const styles = StyleSheet.create({
 
     MainContainer: {
-
         // Add padding at the top for iOS
         paddingTop: (Platform.OS === 'ios') ? 20 : 0,
     },
@@ -236,7 +294,7 @@ const styles = StyleSheet.create({
     },
 
     uploadView: {
-        margin: 15,
+        margin: 20,
         marginBottom: 0,
         height: 5,
     },
@@ -268,6 +326,10 @@ const styles = StyleSheet.create({
         margin: 10,
         marginTop: 0,
         fontSize: 12,
+    },
+
+    textFieldTitle: {
+        margin: 10,
     }
 
 });
