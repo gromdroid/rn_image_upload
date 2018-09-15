@@ -49,6 +49,7 @@ const uiTheme = {
 
 export default class App extends Component {
 
+
     constructor() {
         super();
         this.state = {
@@ -68,6 +69,8 @@ export default class App extends Component {
 
     //Here we get the list with images because componentDidMount is always called before the view is rendered
     componentDidMount() {
+      //Hide yellow warnings in the App
+      console.disableYellowBox = true;
         return fetch('http://gromdroid.nl/wp/wp-json/wp/v2/media')
             .then((response) => response.json())
             .then((responseJson) => {
@@ -311,10 +314,12 @@ export default class App extends Component {
                     <Text style={styles.textViewTitle} >{rowData.title.rendered}</Text>
                     <Text style={styles.textViewDate} >{this.calculateDateString(rowData.date)}</Text>
                     {rowData.mime_type == 'image/jpeg' &&
-                    <Image source = {{ uri: rowData.guid.rendered }} style={styles.imageViewContainer} />
+                    <Image source = {{ uri: rowData.media_details.sizes.large.source_url }} style={styles.imageViewContainer} />
                     }
                     {rowData.mime_type == 'video/mp4' &&
-                    <Video url={rowData.guid.rendered} />
+                    <Video
+                        url={rowData.guid.rendered}
+                    />
                     }
                   </Card>
                 </View>
