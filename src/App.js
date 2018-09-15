@@ -157,7 +157,7 @@ export default class App extends Component {
     calculateDateString(rawDate){
       //Time in seconds
       let currentDate = (new Date().getTime() / 1000);
-      let postedDate = (new Date(rawDate).getTime() / 1000) + 7200 //Add 2 hours bcuz fuck WordPress
+      let postedDate = (new Date(rawDate).getTime() / 1000)
 
       let difference = Math.abs(currentDate - postedDate);
 
@@ -184,7 +184,7 @@ export default class App extends Component {
              <ThemeContext.Provider value={getTheme(uiTheme)}>
              <Toolbar
                leftElement="menu"
-               centerElement="Upload"
+               centerElement="Bslim"
                rightElement={{
                  menu: {
                      icon: "more-vert",
@@ -227,14 +227,14 @@ export default class App extends Component {
           </ThemeContext.Provider>
         );
       }
-      //// TODO: Better difference in date because now it has to add 2 hours manual because WordPress fucks up dates
+
       return (
           <ThemeContext.Provider value={getTheme(uiTheme)}>
           <Toolbar
           elevation={5}
           styles={styles.toolbar}
             leftElement="menu"
-            centerElement="Upload"
+            centerElement="Bslim"
             rightElement={{
               menu: {
                   icon: "more-vert",
@@ -260,7 +260,7 @@ export default class App extends Component {
                   <Card>
                     <Text style={styles.textViewTitle} >{rowData.title.rendered}</Text>
                     <Text style={styles.textViewDate} >{this.calculateDateString(rowData.date)}</Text>
-                    <Image source = {{ uri: rowData.guid.rendered }} style={styles.imageViewContainer} />
+                    <Image source = {{ uri: rowData.media_details.sizes.medium_large.source_url }} style={styles.imageViewContainer} />
                   </Card>
                 </View>
               }
