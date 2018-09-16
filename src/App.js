@@ -229,7 +229,7 @@ export default class App extends Component {
             </ThemeContext.Provider>
           );
 
-      //Show image upload detail screen
+      //Show content upload detail screen
       } else if(this.state.imageSource != null){
         let fileName = this.state.fileName;
 
@@ -246,12 +246,16 @@ export default class App extends Component {
              }}
            />
            <View>
-              //Check mimeType if you need to display image or video
-              {this.state.mimeType== 'image/jpeg' &&
-              <Image source={{uri:  this.state.filePath}} style={styles.imageViewContainer} />
+
+              {
+                //Check mimeType if you need to display image or video
+                this.state.mimeType== 'image/jpeg' &&
+                <Image source={{uri:  this.state.filePath}} style={styles.imageViewContainer} />
               }
-              {this.state.mimeType == 'video/mp4' &&
-              <Video url={this.state.filePath} />
+              {
+                ///TODO: Videoplayer height
+                this.state.mimeType == 'video/mp4' &&
+                <Video inlineOnly={true} url={this.state.filePath} style={styles.videoPlayer} />
               }
               <View style={styles.textFieldPadding}>
                 <TextField
@@ -290,16 +294,18 @@ export default class App extends Component {
               }
             }}
           />
-          //If there is an upload going on show progressbar
-          {this.state.uploading &&
-          <View style={styles.uploadView}>
-          <ProgressBarAnimated
-            height={5}
-            width={barWidth}
-            maxValue={100}
-            value={this.state.progress}
-          />
-          </View>
+
+          {
+            //If there is an upload going on show progressbar
+            this.state.uploading &&
+            <View style={styles.uploadView}>
+            <ProgressBarAnimated
+              height={5}
+              width={progressBarWidth}
+              maxValue={100}
+              value={this.state.progress}
+            />
+            </View>
           }
           <View style={styles.MainContainer}>
             <ListView
@@ -309,14 +315,17 @@ export default class App extends Component {
                   <Card>
                     <Text style={styles.textViewTitle} >{rowData.title.rendered.replace('-', ' ')}</Text>
                     <Text style={styles.textViewDate} >{this.calculateDateString(rowData.date)}</Text>
-                    //Check mimeType to display image or video
-                    {rowData.mime_type == 'image/jpeg' &&
-                    <Image source = {{ uri: rowData.media_details.sizes.large.source_url }} style={styles.imageViewContainer} />
+                    {
+                      //Check mimeType to display image or video
+                      rowData.mime_type == 'image/jpeg' &&
+                      <Image source = {{ uri: rowData.media_details.sizes.large.source_url }} style={styles.imageViewContainer} />
                     }
-                    {rowData.mime_type == 'video/mp4' &&
-                    <Video
-                        url={rowData.guid.rendered}
-                    />
+                    {
+                      rowData.mime_type == 'video/mp4' &&
+                      <Video
+                          inlineOnly={true}
+                          url={rowData.guid.rendered}
+                      />
                     }
                   </Card>
                 </View>
@@ -341,7 +350,6 @@ export default class App extends Component {
       );
     }
 }
-const progressBarWidth = Dimensions.get('screen').width - 20;
 const styles = StyleSheet.create({
 
     MainContainer: {
@@ -368,12 +376,8 @@ const styles = StyleSheet.create({
         color: 'white',
     },
 
-    backgroundVideo: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        bottom: 0,
-        right: 0,
+    videoPlayer: {
+      height: '70%'
     },
 
     uploadView: {
