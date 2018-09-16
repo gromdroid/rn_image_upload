@@ -94,6 +94,7 @@ export default class App extends Component {
     }
 
     //Method for taking a picture or picking a picture from cameraroll
+    ///TODO: Fix image rotation
     chooseContent(action, type) {
         const options = {
             height: 500,
