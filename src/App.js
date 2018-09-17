@@ -26,6 +26,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import ActionButton from 'react-native-action-button';
 import * as mime from 'react-native-mime-types';
 import Video from 'react-native-af-video-player'
+import QRCodeScanner from 'react-native-qrcode-scanner';
 
 import {
     COLOR,
@@ -62,6 +63,8 @@ export default class App extends Component {
             mimeType: null,
             filePath: null,
             filePathRaw: null,
+            qrState: false,
+            pointCount: 0
         };
     }
 
@@ -69,7 +72,6 @@ export default class App extends Component {
     componentDidMount() {
         //Hide yellow warnings in the App
         console.disableYellowBox = true;
-
         return fetch('http://gromdroid.nl/wp/wp-json/wp/v2/media')
             .then((response) => response.json())
             .then((responseJson) => {
@@ -94,7 +96,7 @@ export default class App extends Component {
     }
 
     //Method for taking a picture or picking a picture from cameraroll
-    ///TODO: Fix image rotation
+    ///TODO: Fix image orientation
     chooseContent(action, type) {
         const options = {
             height: 500,
@@ -146,8 +148,8 @@ export default class App extends Component {
     }
 
 
-    //Method to upload chosen picture to WordPress hosting
-    uploadPhoto() {
+    //Method to upload chosen content to WordPress hosting
+    uploadContent() {
         let fileName = this.state.fileName;
         let imageSource = this.state.imageSource;
         let mimeType = this.state.mimeType;
@@ -183,6 +185,20 @@ export default class App extends Component {
             .catch((err) => {
                 // error handling ..
             })
+    }
+
+    checkQR(response){
+      if(response.data == '1234'){
+        this.setState({
+          pointCount: this.state.pointCount + 1,
+          qrState: false,
+        });
+      } else {
+        alert("Wrong code");
+        this.setState({
+          qrState: false,
+        });
+      }
     }
 
     calculateDateString(rawDate){
@@ -237,7 +253,14 @@ export default class App extends Component {
         return (
            <ThemeContext.Provider value={getTheme(uiTheme)}>
            <Toolbar
-             leftElement="menu"
+             leftElement="arrow-back"
+             onLeftElementPress={() => this.setState({
+                 //Set everything to null again because after cancel there is no 'main' image/video
+                 fileName: '',
+                 fileExtension: null,
+                 mimeType: null,
+                 imageSource: null,
+                 uploading: false,})}
              centerElement="Upload"
              rightElement={{
                menu: {
@@ -256,7 +279,9 @@ export default class App extends Component {
               {
                 ///TODO: Videoplayer height
                 this.state.mimeType == 'video/mp4' &&
-                <Video inlineOnly={true} url={this.state.filePath} style={styles.videoPlayer} />
+                <View style={styles.videoContainer}>
+                  <Video inlineOnly={true} url={this.state.filePath} style={styles.VideoPlayer} />
+                </View>
               }
               <View style={styles.textFieldPadding}>
                 <TextField
@@ -266,90 +291,116 @@ export default class App extends Component {
                 />
               </View>
               <View style={styles.textFieldPadding}>
-              <Button raised primary text="Uploaden" onPress={() => this.uploadPhoto()} />
+              <Button raised primary text="Uploaden" onPress={() => this.uploadContent()} />
               <Button raised accent text="Cancel" onPress={() => this.setState({
                   //Set everything to null again because after cancel there is no 'main' image/video
                   fileName: '',
                   fileExtension: null,
                   mimeType: null,
                   imageSource: null,
-                  uploading: true,})} />
+                  uploading: false,})} />
               </View>
            </View>
           </ThemeContext.Provider>
         );
-      }
+      } else if(this.state.qrState){
 
-      //Else just render the main screen
-      return (
-          <ThemeContext.Provider value={getTheme(uiTheme)}>
-          <Toolbar
-          elevation={5}
-          styles={styles.toolbar}
-            leftElement="menu"
-            centerElement="Bslim"
-            rightElement={{
-              menu: {
-                  icon: "more-vert",
-                  labels: ["item 1", "item 2"]
-              }
-            }}
-          />
-
-          {
-            //If there is an upload going on show progressbar
-            this.state.uploading &&
-            <View style={styles.uploadView}>
-            <ProgressBarAnimated
-              height={5}
-              width={progressBarWidth}
-              maxValue={100}
-              value={this.state.progress}
-            />
-            </View>
+        return (
+        <ThemeContext.Provider value={getTheme(uiTheme)}>
+        <Toolbar
+          leftElement="menu"
+          centerElement="QR code"
+          rightElement={{
+            menu: {
+                icon: "more-vert",
+                labels: ["item 1", "item 2"]
+            }
+          }}
+        />
+        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+        <QRCodeScanner
+          onRead={(response) => this.checkQR(response)}
+          topContent={
+            <Text>
+              Scan QR code to get points
+            </Text>
           }
-          <View style={styles.MainContainer}>
-            <ListView
-             dataSource={this.state.dataSource}
-             renderRow={(rowData) =>
-                <View style={styles.itemView}>
-                  <Card>
-                    <Text style={styles.textViewTitle} >{rowData.title.rendered.replace('-', ' ')}</Text>
-                    <Text style={styles.textViewDate} >{this.calculateDateString(rowData.date)}</Text>
-                    {
-                      //Check mimeType to display image or video
-                      rowData.mime_type == 'image/jpeg' &&
-                      <Image source = {{ uri: rowData.media_details.sizes.large.source_url }} style={styles.imageViewContainer} />
-                    }
-                    {
-                      rowData.mime_type == 'video/mp4' &&
-                      <Video
-                          inlineOnly={true}
-                          url={rowData.guid.rendered}
-                      />
-                    }
-                  </Card>
-                </View>
-              }
-            />
-          </View>
-          <ActionButton buttonColor="rgba(231,76,60,1)">
-          <ActionButton.Item buttonColor='#9c27b0' title="Take picture" onPress={() => this.chooseContent('new', 'image')}>
-            <Icon name="md-camera" style={styles.actionButtonIcon} />
-          </ActionButton.Item>
-          <ActionButton.Item buttonColor='#3f51b5' title="Choose photo" onPress={() => this.chooseContent('existing', 'image')}>
-            <Icon name="md-image" style={styles.actionButtonIcon} />
-          </ActionButton.Item>
-          <ActionButton.Item buttonColor='#009688' title="Take video" onPress={() => this.chooseContent('new', 'video')}>
-            <Icon name="md-videocam" style={styles.actionButtonIcon} />
-          </ActionButton.Item>
-          <ActionButton.Item buttonColor='#00bcd4' title="Choose video" onPress={() => this.chooseContent('existing', 'video')}>
-            <Icon name="md-document" style={styles.actionButtonIcon} />
-          </ActionButton.Item>
-        </ActionButton>
-          </ThemeContext.Provider>
-      );
-    }
+          bottomContent={
+            <TouchableOpacity>
+            </TouchableOpacity>
+          }
+        />
+        </View>
+       </ThemeContext.Provider>
+     )
+     } else {
+       //Else just render the main screen
+       return (
+           <ThemeContext.Provider value={getTheme(uiTheme)}>
+           <Toolbar
+           elevation={5}
+           styles={styles.toolbar}
+             leftElement="menu"
+             centerElement={"Bslim " + this.state.pointCount}
+             rightElement="crop-free"
+             onRightElementPress={() => this.setState({qrState: true})}
+           />
+
+           {
+             //If there is an upload going on show progressbar
+             this.state.uploading &&
+             <View style={styles.uploadView}>
+             <ProgressBarAnimated
+               height={5}
+               width={progressBarWidth}
+               maxValue={100}
+               value={this.state.progress}
+             />
+             </View>
+           }
+           <View style={styles.MainContainer}>
+             <ListView
+              dataSource={this.state.dataSource}
+              renderRow={(rowData) =>
+                 <View style={styles.itemView}>
+                   <Card>
+                     <Text style={styles.textViewTitle} >{rowData.title.rendered.replace('-', ' ')}</Text>
+                     <Text style={styles.textViewDate} >{this.calculateDateString(rowData.date)}</Text>
+                     {
+                       //Check mimeType to display image or video
+                       rowData.mime_type == 'image/jpeg' &&
+                       <Image source = {{ uri: rowData.media_details.sizes.large.source_url }} style={styles.imageViewContainer} />
+                     }
+                     {
+                       rowData.mime_type == 'video/mp4' &&
+                       <Video
+                           inlineOnly={true}
+                           url={rowData.guid.rendered}
+                       />
+                     }
+                   </Card>
+                 </View>
+               }
+             />
+           </View>
+           <ActionButton buttonColor="rgba(231,76,60,1)">
+           <ActionButton.Item buttonColor='#9c27b0' title="Take picture" onPress={() => this.chooseContent('new', 'image')}>
+             <Icon name="md-camera" style={styles.actionButtonIcon} />
+           </ActionButton.Item>
+           <ActionButton.Item buttonColor='#3f51b5' title="Choose photo" onPress={() => this.chooseContent('existing', 'image')}>
+             <Icon name="md-image" style={styles.actionButtonIcon} />
+           </ActionButton.Item>
+           <ActionButton.Item buttonColor='#009688' title="Take video" onPress={() => this.chooseContent('new', 'video')}>
+             <Icon name="md-videocam" style={styles.actionButtonIcon} />
+           </ActionButton.Item>
+           <ActionButton.Item buttonColor='#00bcd4' title="Choose video" onPress={() => this.chooseContent('existing', 'video')}>
+             <Icon name="md-document" style={styles.actionButtonIcon} />
+           </ActionButton.Item>
+         </ActionButton>
+           </ThemeContext.Provider>
+       );
+     }
+     }
 }
 const styles = StyleSheet.create({
 
@@ -377,8 +428,12 @@ const styles = StyleSheet.create({
         color: 'white',
     },
 
-    videoPlayer: {
-      height: '70%'
+    videoContainer: {
+      //height: '100%'
+    },
+
+    VideoPlayer: {
+      //height: '70%'
     },
 
     uploadView: {
